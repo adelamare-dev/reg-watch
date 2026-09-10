@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "description": "RegWatch (Showcase) - Multi-agent regulatory compliance copilot querying a cross-referenced **DORA × EU AI Act** corpus.",
+  "author": {
+    "name": "Antoine Delamare",
+    "email": "antoine@blockchain-cie.com",
+    "url": "https://www.linkedin.com/in/adelamare/"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
