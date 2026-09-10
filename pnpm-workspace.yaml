@@ -1,0 +1,60 @@
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+
+trustPolicy: no-downgrade
+
+# Narrow, named exception. The policy itself stays on for every other package.
+#
+# vite migrated its release pipeline to npm OIDC trusted publishing. pnpm
+# compares trust evidence by publish date across ALL branches, so a 5.4.x
+# release published before that migration now reads as a downgrade against a
+# later 6.x/7.x release. Known pnpm defect: pnpm/pnpm#10202, with the exact
+# same false positive reported on vite itself in pnpm/pnpm#10622.
+#
+# No GHSA, no CVE, no compromise reported against the `vite` package. This is
+# the case pnpm's own documentation names "package-that-migrated-cicd".
+# Revisit once pnpm fixes the cross-branch comparison.
+trustPolicyExclude:
+  - vite
+  # semver — same migrated-cicd false positive (pnpm/pnpm#10202). semver 7.x is
+  # published via GitHub Actions OIDC trusted publishing with SLSA v1 provenance;
+  # 6.3.1 (the `latest-6` branch tip, published 2023-07) predates that migration,
+  # carries no provenance, and is read as a downgrade across branches. Pulled
+  # transitively by the eslint/vite/typescript toolchain. No GHSA/CVE/compromise
+  # on `semver`.
+  - semver
+  # pino — same migrated-cicd false positive (pnpm/pnpm#10202). pino 10.x is
+  # published via GitHub Actions OIDC trusted publishing with SLSA v1 provenance;
+  # 9.14.0 (9.x branch, published 2025-10) was published directly by the
+  # maintainer before the OIDC migration and carries no provenance, so pnpm
+  # flags it as a downgrade. Pulled transitively by @copilotkit/runtime.
+  # No GHSA/CVE/compromise on `pino`.
+  - pino
+  # undici — same migrated-cicd false positive (pnpm/pnpm#10202). undici 8.x is
+  # published via GitHub Actions OIDC trusted publishing with SLSA v1 provenance;
+  # 5.29.0 (5.x branch, published 2025-03) was published directly by the maintainer
+  # before the OIDC migration and carries no provenance, so pnpm flags it as a
+  # downgrade. Maintained by the Node.js team (nodejs/undici). Pulled transitively
+  # by @copilotkit/runtime. No GHSA/CVE/compromise on `undici`.
+  - undici
+
+blockExoticSubdeps: true
+trustLockfile: false
+
+strictDepBuilds: true
+dangerouslyAllowAllBuilds: false
+
+audit:
+  level: high
+
+# esbuild ships prebuilt platform binaries and its install script only selects
+# and links the right one. vite depends on it; the build cannot run without it.
+#
+# @scarf/scarf is install telemetry (reports a ping to scarf.sh on install). It
+# is not needed for the app to run. Explicitly denied here so pnpm stops
+# erroring on the unreviewed ignored build (ERR_PNPM_IGNORED_BUILDS) — `false`
+# is the same record `pnpm approve-builds` writes when you deny a package.
+allowBuilds:
+  '@scarf/scarf': false
+  esbuild: true
