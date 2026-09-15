@@ -25,3 +25,16 @@ dist-ssr
 
 # SETUP
 SETUP
+
+# Secrets
+.env
+
+# Regulatory corpus — downloaded by `pnpm ingest`, pinned by corpus-manifest.json
+data/corpus/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
