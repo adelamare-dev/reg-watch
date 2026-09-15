@@ -1,7 +1,7 @@
 # RegWatch — infrastructure services.
 #
-# Only Qdrant is declared so far; the `web`, `runtime`, `mcp` and `agent`
-# services land together with their own layers.
+# Qdrant and the MCP tool server are declared so far; the `web`, `runtime` and
+# `agent` services land together with their own layers.
 
 services:
   qdrant:
@@ -23,6 +23,29 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  mcp:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    container_name: regwatch-mcp
+    restart: unless-stopped
+    ports:
+      - "8300:8300"
+    environment:
+      # Reaches Qdrant over the compose network, not the host.
+      QDRANT_URL: http://qdrant:6333
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8300"
+      # The in-image layout has no repository root above the package, so the
+      # path the settings derive by default does not apply here.
+      MANIFEST_PATH: /corpus/corpus-manifest.json
+    volumes:
+      # Re-read after every ingestion, so it is mounted rather than baked in.
+      - ./corpus-manifest.json:/corpus/corpus-manifest.json:ro
+    depends_on:
+      qdrant:
+        condition: service_healthy
 
 volumes:
   qdrant-storage:
