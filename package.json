@@ -13,7 +13,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "qdrant": "docker compose up -d qdrant",
+    "ingest": "uv run --directory agent python -m rag.ingest",
+    "ingest:verify": "uv run --directory agent python -m rag.ingest --verify",
+    "ingest:dry-run": "uv run --directory agent python -m rag.ingest --dry-run",
+    "test:agent": "uv run --directory agent pytest"
   },
   "dependencies": {
     "@copilotkit/react-core": "^1.70.1",

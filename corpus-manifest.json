@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-09-15",
+  "documents": [
+    {
+      "id": "dora-reg-fr",
+      "celex": "32022R2554",
+      "regulation": "DORA",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32022R2554",
+      "language": "fr",
+      "consolidation_date": "2025-01-17",
+      "expected_articles": 64,
+      "sha256": "0e3651ce52273cb5b4e9f8d3e85332c1b856db4c891b0d952bd087a6497c7e3a",
+      "content_sha256": "a079a0f3aaebd69e51a4991f1b3a762f04483522b65ce8b5c7f165e1b6ad96d8",
+      "fetched_at": "2026-09-15",
+      "article_count": 64,
+      "chunk_count": 321
+    },
+    {
+      "id": "dora-reg-en",
+      "celex": "32022R2554",
+      "regulation": "DORA",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32022R2554",
+      "language": "en",
+      "consolidation_date": "2025-01-17",
+      "expected_articles": 64,
+      "sha256": "06b881778009cac968fbb15d9f50620708e1ff93c81149b74a386727b2bf95f3",
+      "content_sha256": "2008dfa31e474d51078fffe1acc5bc39a440c27b3f4c21a3155bc26d94673369",
+      "fetched_at": "2026-09-15",
+      "article_count": 64,
+      "chunk_count": 308
+    },
+    {
+      "id": "aiact-reg-fr",
+      "celex": "32024R1689",
+      "regulation": "AI_ACT",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32024R1689",
+      "language": "fr",
+      "consolidation_date": "2024-07-12",
+      "expected_articles": 113,
+      "sha256": "babfcba5c7d8383b89d9f70214eda9d88bbef782de8a5eb9fa260bbc40a3dea2",
+      "content_sha256": "c537791c01dbe5eb20b1b4a99fca4407190ec10d3e6f1b20ca50e14905608a87",
+      "fetched_at": "2026-09-15",
+      "article_count": 113,
+      "chunk_count": 572
+    },
+    {
+      "id": "aiact-reg-en",
+      "celex": "32024R1689",
+      "regulation": "AI_ACT",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32024R1689",
+      "language": "en",
+      "consolidation_date": "2024-07-12",
+      "expected_articles": 113,
+      "sha256": "cb3689d6fec5244dff6f80a172569497f169d00e7a0cd8e8a070be8250b48af8",
+      "content_sha256": "a37808ffd2b2535d8de7e6cbb9fea7ec354f2d332b684eb722f98069024227f9",
+      "fetched_at": "2026-09-15",
+      "article_count": 113,
+      "chunk_count": 559
+    }
+  ]
+}
