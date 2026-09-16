@@ -38,3 +38,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+
+# superpowers — conserves en local, hors depot
+docs
