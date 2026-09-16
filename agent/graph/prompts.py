@@ -9,6 +9,8 @@ the above" would be read as one.
 
 from __future__ import annotations
 
+from html import escape
+
 ANALYST_SYSTEM = """You are a regulatory analyst working on EU financial and \
 AI regulation.
 
@@ -48,15 +50,27 @@ def language_name(code: str) -> str:
     return _LANGUAGE_NAMES.get(code, "French")
 
 
+def _escape_chunk_text(text: str) -> str:
+    """Neutralise angle brackets in ingested text before it enters a chunk.
+
+    This text comes from a document fetched off EUR-Lex, not from the user
+    and not from us - trusting it to never contain "</corpus_chunk>" is an
+    assumption, not a guarantee, and the delimiter is exactly the layer that
+    has to hold once that assumption breaks.
+    """
+    return escape(text, quote=False)
+
+
 def render_chunks(hits: list[dict]) -> str:
     """Wrap each hit in a delimited element carrying its citation metadata."""
     blocks = []
     for index, hit in enumerate(hits, start=1):
         blocks.append(
-            f'<corpus_chunk id="{index}" regulation="{hit["regulation"]}" '
-            f'article="{hit["article_number"]}" language="{hit["language"]}" '
-            f'consolidation_date="{hit["consolidation_date"]}">\n'
-            f"{hit['text']}\n"
+            f'<corpus_chunk id="{index}" regulation="{escape(hit["regulation"], quote=True)}" '
+            f'article="{escape(hit["article_number"], quote=True)}" '
+            f'language="{escape(hit["language"], quote=True)}" '
+            f'consolidation_date="{escape(hit["consolidation_date"], quote=True)}">\n'
+            f"{_escape_chunk_text(hit['text'])}\n"
             f"</corpus_chunk>"
         )
     return "\n\n".join(blocks)
