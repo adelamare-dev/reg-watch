@@ -18,13 +18,17 @@ def retrieval_node(state: GraphState, *, retriever) -> dict:
 
     A regulation outside the corpus raises rather than refuses: an unknown
     filter is a caller bug, and answering "no regulatory basis" would hide it.
+
+    Language is detected on `question` alone, never on `search_query`: a
+    critic's reformulation is keywords with no function words, and running
+    the detector on it would silently flip the answer's language on a retry.
     """
     language = detect_language(state["question"])
     regulation = canonical_regulation(state["regulation_filter"])
 
     result = search_regulatory_corpus(
         retriever,
-        query=state["question"],
+        query=state["search_query"] or state["question"],
         regulation=regulation,
         language=language,
     )

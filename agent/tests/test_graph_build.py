@@ -5,10 +5,37 @@ from __future__ import annotations
 from graph.build import build_graph
 from graph.schemas import Claim, CriticVerdict
 from graph.state import initial_state
+from rag.references import References
+from rag.retriever import RetrievalResult
 from tests.fakes import FakeLLM, FakeStructuredLLM
 from tests.test_mcp_tools import FakeRetriever, make_hit
 
 CONFIG = {"configurable": {"thread_id": "test"}}
+
+
+class SequencedRetriever:
+    """Replays one `RetrievalResult` per call, from a fixed sequence of hit lists.
+
+    `FakeRetriever` always returns the same hits on every call, which cannot
+    express a retry that finds something on the first pass and nothing on the
+    reformulated second pass. This double scripts that per-call sequence.
+    """
+
+    def __init__(self, *, hits_sequence: list[list]) -> None:
+        self._hits_sequence = list(hits_sequence)
+        self.search_calls: list[dict] = []
+
+    def search(self, question: str, *, language=None, regulation=None, top_k=None):
+        self.search_calls.append(
+            {"question": question, "language": language, "regulation": regulation, "top_k": top_k}
+        )
+        hits = self._hits_sequence.pop(0)
+        return RetrievalResult(
+            hits=hits,
+            references=References(),
+            used_exact_filter=False,
+            is_grounded=bool(hits),
+        )
 
 
 class ScriptedLLM:
@@ -90,6 +117,43 @@ def test_an_ungrounded_answer_sends_the_run_back_to_retrieval():
     assert final["iteration"] == 2
     # The second search used the critic's reformulation, not the original.
     assert retriever.search_calls[1]["question"] == "registre des prestataires TIC"
+
+
+def test_a_sterile_reformulation_still_refuses_partially():
+    # The first pass found articles; the critic's reformulation found none.
+    # That is a failure of this run, not a boundary of the corpus, and the
+    # refusal has to say so.
+    retriever = SequencedRetriever(hits_sequence=[[make_hit()], []])
+    llm = ScriptedLLM(
+        answers=["Première tentative."],
+        verdicts=[verdict(is_grounded=False, query="requête stérile")],
+    )
+    graph = build_graph(retriever=retriever, llm=llm)
+
+    final = graph.invoke(initial_state("Question difficile"), CONFIG)
+
+    assert final["answer"] is None
+    assert "insuffisant" in final["refusal_reason"].lower()
+
+
+def test_an_english_question_stays_english_across_a_retry():
+    # The critic reformulates into keywords, which carry no function words.
+    # Detecting the language on that reformulation would silently flip the
+    # answer to French.
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = ScriptedLLM(
+        answers=["First attempt.", "Second attempt."],
+        verdicts=[
+            verdict(is_grounded=False, query="third-party ICT service provider register"),
+            verdict(is_grounded=True),
+        ],
+    )
+    graph = build_graph(retriever=retriever, llm=llm)
+
+    final = graph.invoke(initial_state("What does article 28 of DORA say?"), CONFIG)
+
+    assert final["language"] == "en"
+    assert final["iteration"] == 2
 
 
 def test_the_cycle_is_bounded_and_degrades_into_a_partial_refusal():

@@ -5,9 +5,11 @@ boundary; found but never sufficiently grounded is a failure of this run.
 Collapsing them would tell a user their question is out of scope when it is
 not.
 
-The two are told apart by the presence of hits, not by `is_grounded`: the
-critic sets that flag to False on its way here, so by the time this node runs
-it no longer distinguishes the two paths.
+The two are told apart by `iteration`, not by `hits`: `iteration` is
+monotone - only the critic increments it, and nothing ever resets it - so
+reaching this node with `iteration > 0` means by construction that an answer
+was produced and then judged insufficiently grounded. `hits` offers no such
+guarantee, since a retry's retrieval overwrites it with that pass's results.
 """
 
 from __future__ import annotations
@@ -35,7 +37,7 @@ def refusal_node(state: GraphState) -> dict:
     """Produce the refusal, leaving `answer` unset so the UI can style it."""
     english = state["language"] == "en"
 
-    if state["hits"]:
+    if state["iteration"] > 0:
         reason = PARTIAL_EN if english else PARTIAL_FR
     else:
         reason = NO_BASIS_EN if english else NO_BASIS_FR

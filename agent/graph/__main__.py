@@ -40,15 +40,19 @@ def run_question(
 def format_result(state: GraphState, provider: ProviderInfo) -> str:
     """Render what the UI will later render: answer, citations, provenance."""
     lines: list[str] = []
+    refused = bool(state["refusal_reason"])
 
-    if state["refusal_reason"]:
+    if refused:
         lines.append("=== REFUS ===")
         lines.append(state["refusal_reason"])
     else:
         lines.append("=== RÉPONSE ===")
         lines.append(state["answer"] or "")
 
-    if state["verified_claims"]:
+    # A refusal for insufficient grounding still carries the last pass's
+    # claims and divergences, kept for diagnostics. Printing them here would
+    # hand back under "vérifiées" exactly what the refusal exists to withhold.
+    if not refused and state["verified_claims"]:
         lines.append("")
         lines.append("=== AFFIRMATIONS VÉRIFIÉES ===")
         for claim in state["verified_claims"]:
@@ -60,7 +64,7 @@ def format_result(state: GraphState, provider: ProviderInfo) -> str:
             )
             lines.append(f"  [{mark}] {claim['text']} — {source}")
 
-    if state["divergences"]:
+    if not refused and state["divergences"]:
         lines.append("")
         lines.append("=== DIVERGENCES (sans arbitrage) ===")
         for divergence in state["divergences"]:

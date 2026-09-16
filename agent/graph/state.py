@@ -22,6 +22,11 @@ class GraphState(TypedDict):
     """Everything the three nodes exchange."""
 
     question: str
+    # What the run searches for. Starts unset and is filled in only by the
+    # critic's reformulation; `question` is what the run answers and is never
+    # overwritten, so the two can diverge after a retry without either one
+    # losing its meaning.
+    search_query: str | None
     language: str
     regulation_filter: str | None
     hits: list[dict]
@@ -47,6 +52,7 @@ def initial_state(
     """
     return GraphState(
         question=question,
+        search_query=None,
         language="fr",
         regulation_filter=regulation_filter,
         hits=[],

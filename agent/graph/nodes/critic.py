@@ -10,9 +10,9 @@ from graph.state import MAX_ITERATIONS, GraphState
 def critic_node(state: GraphState, *, llm) -> dict:
     """Score the answer, count the pass, and hand back a reformulated query.
 
-    The reformulated query overwrites `question` so the retrieval node needs
-    no second search path. What the run answers is unchanged - only what it
-    searches for is.
+    The reformulated query is written to `search_query`, never to `question`:
+    what the run answers must stay the original question across retries, and
+    only what it searches for may change.
     """
     messages = [
         ("system", CRITIC_SYSTEM),
@@ -34,7 +34,7 @@ def critic_node(state: GraphState, *, llm) -> dict:
     }
 
     if not verdict.is_grounded and verdict.reformulated_query:
-        update["question"] = verdict.reformulated_query
+        update["search_query"] = verdict.reformulated_query
 
     return update
 

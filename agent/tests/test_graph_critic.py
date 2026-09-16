@@ -83,7 +83,7 @@ def test_an_insufficient_verdict_replaces_the_search_query():
 
     update = critic_node(state_with_answer(), llm=llm)
 
-    assert update["question"] == "registre des prestataires TIC"
+    assert update["search_query"] == "registre des prestataires TIC"
 
 
 def test_a_sufficient_verdict_leaves_the_question_untouched():
@@ -91,7 +91,7 @@ def test_a_sufficient_verdict_leaves_the_question_untouched():
 
     update = critic_node(state_with_answer(), llm=llm)
 
-    assert "question" not in update
+    assert "search_query" not in update
 
 
 def test_divergences_are_recorded_without_a_verdict():
@@ -112,8 +112,12 @@ def test_divergences_are_recorded_without_a_verdict():
     recorded = update["divergences"][0]
     assert "dora_position" in recorded
     assert "ai_act_position" in recorded
-    # The schema itself has no way to express "DORA prevails".
-    assert not any("prevail" in key or "winner" in key for key in recorded)
+
+
+def test_the_divergence_schema_cannot_express_an_arbitration():
+    # The guarantee is structural: juxtaposition is the whole contract, and no
+    # field may carry which regulation wins.
+    assert set(Divergence.model_fields) == {"theme", "dora_position", "ai_act_position"}
 
 
 def test_the_critic_sends_the_chunks_it_verifies_against():

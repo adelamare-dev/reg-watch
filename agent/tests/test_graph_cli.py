@@ -87,6 +87,28 @@ def test_a_refusal_reads_differently_from_an_answer():
     assert "Aucune base réglementaire" in output
 
 
+def test_a_refusal_does_not_print_unsupported_claims():
+    # The run refused because these claims were not grounded. Printing them
+    # under "affirmations vérifiées" would hand back exactly what the refusal
+    # exists to withhold.
+    state = initial_state("Question difficile")
+    state["refusal_reason"] = "Des dispositions ont été trouvées, mais leur ancrage est insuffisant."
+    state["verified_claims"] = [
+        {
+            "text": "DORA impose une amende de 10 millions.",
+            "is_supported": False,
+            "regulation": None,
+            "article_number": None,
+        }
+    ]
+
+    output = format_result(state, PROVIDER)
+
+    assert "amende de 10 millions" not in output
+    assert "AFFIRMATIONS" not in output.upper()
+    assert "PROVENANCE" in output.upper()
+
+
 def test_divergences_appear_side_by_side():
     state = initial_state("Comparaison")
     state["answer"] = "Les deux règlements traitent ce point."
