@@ -20,6 +20,7 @@
     "ingest:dry-run": "uv run --directory agent python -m rag.ingest --dry-run",
     "mcp": "uv run --directory agent python -m mcp_server",
     "mcp:stdio": "uv run --directory agent python -m mcp_server --stdio",
+    "graph": "uv run --directory agent python -m graph",
     "test:agent": "uv run --directory agent pytest",
     "test:agent:integration": "uv run --directory agent pytest -m integration"
   },
