@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # and the caller is expected to refuse explicitly.
     score_threshold: float = 0.5
 
+    # --- LLM --------------------------------------------------------------
+    llm_model: str = "mistral-small-2603"
+    llm_temperature: float = 0.0
+    llm_timeout: int = 60
+
     @property
     def collection_name(self) -> str:
         """Collection name suffixed with the active model.

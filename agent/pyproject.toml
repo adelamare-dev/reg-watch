@@ -9,6 +9,7 @@ authors = [{ name = "Antoine Delamare", email = "antoine@blockchain-cie.com" }]
 dependencies = [
     "fastembed==0.8.0",
     "httpx==0.28.1",
+    "langchain-mistralai==1.1.6",
     "langgraph==1.2.11",
     "mcp==2.2.0",
     "pydantic==2.13.5",
