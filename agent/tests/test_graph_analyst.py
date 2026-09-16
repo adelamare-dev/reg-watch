@@ -101,3 +101,15 @@ def test_the_analyst_receives_every_hit():
     human = llm.calls[0][1][1]
 
     assert human.count("<corpus_chunk") == 2
+
+
+def test_a_chunk_without_a_consolidation_date_still_renders():
+    # The corpus reads this field with .get(), so an article without a
+    # consolidation date is valid data — not a reason to crash the render.
+    undated = serialised()
+    undated["consolidation_date"] = None
+
+    rendered = render_chunks([undated])
+
+    assert "<corpus_chunk" in rendered
+    assert "Full text of DORA article 28." in rendered

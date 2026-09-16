@@ -61,15 +61,27 @@ def _escape_chunk_text(text: str) -> str:
     return escape(text, quote=False)
 
 
+def _escape_attribute(value: str | None) -> str:
+    """Escape one XML attribute value, treating a missing field as empty.
+
+    The RAG layer reads several hit fields with `.get()` (consolidation_date
+    in particular), so `None` is legitimate corpus data, not corruption.
+    Rendering it as the literal string "None" would hand the model a fake
+    date it could then cite as real, so a missing value renders as an empty
+    attribute instead.
+    """
+    return escape(value, quote=True) if value is not None else ""
+
+
 def render_chunks(hits: list[dict]) -> str:
     """Wrap each hit in a delimited element carrying its citation metadata."""
     blocks = []
     for index, hit in enumerate(hits, start=1):
         blocks.append(
-            f'<corpus_chunk id="{index}" regulation="{escape(hit["regulation"], quote=True)}" '
-            f'article="{escape(hit["article_number"], quote=True)}" '
-            f'language="{escape(hit["language"], quote=True)}" '
-            f'consolidation_date="{escape(hit["consolidation_date"], quote=True)}">\n'
+            f'<corpus_chunk id="{index}" regulation="{_escape_attribute(hit["regulation"])}" '
+            f'article="{_escape_attribute(hit["article_number"])}" '
+            f'language="{_escape_attribute(hit["language"])}" '
+            f'consolidation_date="{_escape_attribute(hit["consolidation_date"])}">\n'
             f"{_escape_chunk_text(hit['text'])}\n"
             f"</corpus_chunk>"
         )
