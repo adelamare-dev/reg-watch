@@ -2,38 +2,53 @@
 
 ## Project Overview
 
-RegWatch is a multi-agent regulatory compliance copilot for **DORA × EU AI Act**. Target architecture (per spec) is 5 layers: React UI → Observability → LangGraph orchestration → MCP tools → RAG corpus. **Current state:** only the CopilotKit chat scaffold (frontend + Node runtime) exists. The `SETUP/` folder holds planning docs and is **out of scope** for code work — it is gitignored.
+RegWatch is a multi-agent regulatory compliance copilot for **DORA × EU AI Act**. Target architecture (per spec) is 5 layers: React UI → Observability → LangGraph orchestration → MCP tools → RAG corpus. **Current state:** layers 1-3 are implemented in Python under `agent/` (249 default tests); the CopilotKit chat scaffold is not yet wired to the graph. The `SETUP/` folder holds planning docs and is **out of scope** for code work — it and `docs/` are gitignored (kept locally, out of the remote).
 
 ## Tech Stack & Key Paths
 
 - **Frontend**: React 19 + TypeScript + Vite 8 — `src/main.tsx` → `src/App.tsx`
-- **Backend**: Node HTTP server — `server.ts` (CopilotKit Runtime v2, port `8200`, `/api/copilotkit`)
-- **AI layer**: `@copilotkit/react-core` + `@copilotkit/runtime` (v2 API), model `openai:gpt-5-mini`
-- **Package manager**: pnpm (strict supply-chain policy, see below)
-- **TypeScript**: project references — `tsconfig.app.json` (src + `server.ts`, DOM, bundler mode) / `tsconfig.node.json` (`vite.config.ts`, Node)
-- **Styling**: plain CSS + CSS variables, light/dark via `prefers-color-scheme`, modern CSS nesting — `src/index.css`, `src/App.css`
+- **Node backend**: `server.ts` (CopilotKit Runtime v2, port `8200`, `/api/copilotkit`), model `openai:gpt-5-mini`. Not yet connected to the Python graph.
+- **Python agent** (`agent/`, one `uv` project, packages `rag`, `mcp_server`, `graph`):
+  - `rag/` — EUR-Lex ingestion, structural chunking, Qdrant retrieval with parent-document return
+  - `mcp_server/` — 4 regulatory tools over Streamable HTTP (port `8300`); pure sync functions taking the retriever as an argument, so they are consumed both over the wire and in-process
+  - `graph/` — LangGraph orchestration: Retrieval → Analyst → Critic, bounded retry, two explicit refusals, demo CLI
+- **Package managers**: pnpm (JS, strict policy below) + `uv` (Python 3.12)
+- **Styling**: plain CSS + CSS variables, light/dark via `prefers-color-scheme`, modern CSS nesting
 
 ## Setup & Commands
 
 ```bash
-sfw pnpm install          # install deps (policy-enforced, see below)
+sfw pnpm install          # install JS deps (policy-enforced, see below)
 sfw pnpm dev              # Vite dev server (frontend)
 sfw pnpm build            # tsc -b && vite build
 sfw pnpm lint             # eslint .
-sfw pnpm preview          # preview built frontend
 sfw tsx server.ts         # CopilotKit runtime backend (separate terminal, port 8200)
+
+sfw pnpm qdrant           # docker compose up -d qdrant
+sfw pnpm ingest           # ingest the corpus (also :verify, :dry-run)
+sfw pnpm mcp              # MCP server, port 8300 (also mcp:stdio)
+sfw pnpm graph "<question>"          # ask the graph one question
+sfw pnpm test:agent                  # 249 tests
+sfw pnpm test:agent:integration      # needs a reachable Qdrant
 ```
 
-No `dev:server` script exists in `package.json` — backend is started manually via `tsx server.ts`. TODO: verify if a script should be added.
+**Every Python command must run inside WSL2** — the Windows→WSL2 `localhost` relay is broken on this machine, so Qdrant is unreachable from Windows-side Python:
+
+```bash
+wsl.exe -e bash -lc "export PATH=\"\$HOME/.local/bin:\$PATH\" && cd '/mnt/c/Users/Lordtoinou/Desktop/Projects/Business Online/Blockchain_Cie/Agents_IA/regWatch' && <command>"
+```
+
+No `dev:server` script exists — the Node backend is started manually via `tsx server.ts`.
 
 ## Code Style
 
-- TypeScript everywhere; `verbatimModuleSyntax`, `noUnusedLocals`, `noUnusedParameters` enforced.
-- ESM (`"type": "module"`); imports use `.ts`/`.tsx` extensions (`allowImportingTsExtensions`).
-- React 19 with `React.StrictMode`; functional components only.
-- CopilotKit v2 imports use the `/v2` subpath (`@copilotkit/react-core/v2`, `@copilotkit/runtime/v2`).
-- CSS: CSS variables for theming, nesting via native CSS, no preprocessor.
-- No tests, no CI, no Docker yet.
+**TypeScript** — `verbatimModuleSyntax`, `noUnusedLocals`, `noUnusedParameters` enforced. ESM (`"type": "module"`), imports carry `.ts`/`.tsx` extensions. React 19 with `React.StrictMode`, functional components only. CopilotKit v2 imports use the `/v2` subpath. CSS variables for theming, native nesting, no preprocessor.
+
+**Python** — `from __future__ import annotations` everywhere, modern typing (`str | None`). Nodes take their collaborators as keyword arguments and `functools.partial` binds them at graph assembly, so dependency injection survives the framework and tests hand in fakes. Docstrings explain *why*, not *what*.
+
+**Both** — code comments in English; docs, commits and reports in French. **Never reference specs in code** (no `# per SPEC §6.1`, no `# DC21`) — traceability lives in the documents. Commit style: `feat(scope) - lowercase english subject`.
+
+**Tests** — pytest, TDD strict (failing test first, with the right error). `integration` and `network` markers are excluded by default via `addopts`. No JS tests, no CI yet.
 
 ## Supply-Chain Policy (pnpm-workspace.yaml)
 
@@ -46,6 +61,8 @@ The pnpm policy is **intentionally strict** — do not loosen it to unblock inst
 - `allowBuilds`: `esbuild: true` (needed by vite), `@scarf/scarf: false` (telemetry, denied).
 
 If an install fails due to policy, **read `pnpm-workspace.yaml` first** — the answer is usually already documented there.
+
+Python deps are pinned exactly (`langgraph==1.2.11`, `langchain-mistralai==1.1.6`) in `agent/pyproject.toml`, with `agent/uv.lock` committed. Add a dependency by editing `pyproject.toml` and running `uv sync` — never by installing into the environment directly.
 
 ## Working Principles
 
