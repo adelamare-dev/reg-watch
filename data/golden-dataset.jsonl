@@ -1,0 +1,15 @@
+{"id":"hors-001","categorie":"hors_corpus","langue":"fr","comportement_attendu":"refus","question":"<à rédiger>","assertion":"refus_aucune_base","draft":true}
+{"id":"hors-002","categorie":"hors_corpus","langue":"en","comportement_attendu":"refus","question":"<à rédiger>","assertion":"refus_aucune_base","draft":true}
+{"id":"hors-003","categorie":"hors_corpus","langue":"fr","comportement_attendu":"refus","question":"<à rédiger>","assertion":"refus_aucune_base","draft":true}
+{"id":"hors-004","categorie":"hors_corpus","langue":"en","comportement_attendu":"refus","question":"<à rédiger>","assertion":"refus_aucune_base","draft":true}
+{"id":"div-001","categorie":"divergence","langue":"fr","comportement_attendu":"divergence","question":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>","<AI_ACT-ArtNN>"],"assertion":"divergences_non_vides","draft":true}
+{"id":"div-002","categorie":"divergence","langue":"en","comportement_attendu":"divergence","question":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>","<AI_ACT-ArtNN>"],"assertion":"divergences_non_vides","draft":true}
+{"id":"div-003","categorie":"divergence","langue":"fr","comportement_attendu":"divergence","question":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>","<AI_ACT-ArtNN>"],"assertion":"divergences_non_vides","draft":true}
+{"id":"fact-dora-001","categorie":"factuel_mono","langue":"fr","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>"],"draft":true}
+{"id":"fact-dora-002","categorie":"factuel_mono","langue":"en","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>"],"draft":true}
+{"id":"fact-aiact-001","categorie":"factuel_mono","langue":"fr","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<AI_ACT-ArtNN>"],"draft":true}
+{"id":"fact-aiact-002","categorie":"factuel_mono","langue":"en","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<AI_ACT-ArtNN>"],"draft":true}
+{"id":"croise-001","categorie":"croise","langue":"fr","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>","<AI_ACT-ArtNN>"],"draft":true}
+{"id":"croise-002","categorie":"croise","langue":"en","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>","<AI_ACT-ArtNN>"],"draft":true}
+{"id":"refexacte-001","categorie":"reference_exacte","langue":"fr","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<DORA-ArtNN>"],"draft":true}
+{"id":"refexacte-002","categorie":"reference_exacte","langue":"en","comportement_attendu":"repondre","question":"<à rédiger>","reference":"<à rédiger>","reference_context_ids":["<AI_ACT-ArtNN>"],"draft":true}
