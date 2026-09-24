@@ -53,6 +53,27 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     llm_timeout: int = 60
 
+    # --- Observability ----------------------------------------------------
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    # Points at a self-hosted instance by overriding this single value.
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+
+    # --- Evaluation -------------------------------------------------------
+    # Lower than `top_k` on purpose: context_precision costs one LLM call per
+    # chunk, so this is the dominant lever on the cost of an evaluation run.
+    eval_top_k: int = 3
+
+    @property
+    def tracing_enabled(self) -> bool:
+        """Whether traces can actually be exported.
+
+        The Langfuse client keeps its internal flag on and disables itself at
+        authentication time instead, so the key pair is the only reliable
+        signal available before a client exists.
+        """
+        return bool(self.langfuse_public_key and self.langfuse_secret_key)
+
     @property
     def collection_name(self) -> str:
         """Collection name suffixed with the active model.
