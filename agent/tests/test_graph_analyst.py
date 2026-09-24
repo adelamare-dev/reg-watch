@@ -6,7 +6,7 @@ from graph.nodes.analyst import analyst_messages, analyst_node
 from graph.prompts import render_chunks
 from graph.state import initial_state
 from mcp_server.tools import _serialise_hit
-from tests.fakes import FakeLLM
+from tests.fakes import FakeLangfuseClient, FakeLLM
 from tests.test_mcp_tools import make_hit
 
 
@@ -101,6 +101,65 @@ def test_the_analyst_receives_every_hit():
     human = llm.calls[0][1][1]
 
     assert human.count("<corpus_chunk") == 2
+
+
+def test_the_analyst_works_identically_without_a_tracing_client():
+    # Non-regression: omitting `client` must behave exactly as before.
+    llm = FakeLLM(responses=["DORA, article 28 impose un registre."])
+    state = initial_state("Que dit l'article 28 de DORA ?")
+    state["hits"] = [serialised()]
+
+    update = analyst_node(state, llm=llm)
+
+    assert update["answer"] == "DORA, article 28 impose un registre."
+
+
+def test_the_analyst_opens_a_generation_span_when_traced():
+    client = FakeLangfuseClient()
+    llm = FakeLLM(responses=["Réponse."])
+    state = initial_state("Que dit l'article 28 de DORA ?")
+    state["hits"] = [serialised()]
+
+    analyst_node(state, llm=llm, client=client)
+
+    assert len(client.spans) == 1
+    assert client.spans[0].as_type == "generation"
+
+
+class _ResponseWithUsage:
+    """A response carrying token usage, the shape the analyst actually gets back."""
+
+    def __init__(self, content: str, usage: dict) -> None:
+        self.content = content
+        self.usage_metadata = usage
+
+
+class _LLMReturningUsage:
+    """Records the messages it was called with and returns a fixed usage-bearing response."""
+
+    def __init__(self, *, response) -> None:
+        self._response = response
+        self.calls: list = []
+
+    def invoke(self, messages):
+        self.calls.append(messages)
+        return self._response
+
+
+def test_the_analyst_posts_extracted_tokens_on_the_generation_span():
+    client = FakeLangfuseClient()
+    response = _ResponseWithUsage(
+        "Réponse.",
+        {"input_tokens": 42, "output_tokens": 7, "total_tokens": 49},
+    )
+    llm = _LLMReturningUsage(response=response)
+    state = initial_state("Que dit l'article 28 de DORA ?")
+    state["hits"] = [serialised()]
+
+    analyst_node(state, llm=llm, client=client)
+
+    span = client.spans[0]
+    assert span.updates[-1]["usage_details"] == {"input": 42, "output": 7, "total": 49}
 
 
 def test_a_chunk_without_a_consolidation_date_still_renders():

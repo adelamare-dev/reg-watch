@@ -407,3 +407,18 @@ class TestTopKOverride:
         result = retriever.search("nothing relevant", top_k=1)
 
         assert len(result.hits) == 1
+
+
+class TestEmbedderAccessor:
+    """`Retriever.embedder` exists so callers (tracing) can report which
+    embedding back-end is active without `rag` depending on them in turn.
+    """
+
+    def test_embedder_property_exposes_the_configured_embedder(
+        self, client: QdrantClient, embedder: FakeEmbedder, settings: Settings
+    ) -> None:
+        retriever = Retriever(
+            client=client, embedder=embedder, settings=settings, collection_name=COLLECTION
+        )
+
+        assert retriever.embedder is embedder

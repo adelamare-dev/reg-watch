@@ -7,7 +7,7 @@ from graph.schemas import Claim, CriticVerdict
 from graph.state import initial_state
 from rag.references import References
 from rag.retriever import RetrievalResult
-from tests.fakes import FakeLLM, FakeStructuredLLM
+from tests.fakes import FakeLangfuseClient, FakeLLM, FakeRaisingStructuredLLM, FakeStructuredLLM
 from tests.test_mcp_tools import FakeRetriever, make_hit
 
 CONFIG = {"configurable": {"thread_id": "test"}}
@@ -201,6 +201,70 @@ def test_divergences_survive_to_the_final_state():
 
     assert len(final["divergences"]) == 1
     assert final["divergences"][0]["theme"] == "Gestion des risques"
+
+
+class AnalystThenRaisingCriticLLM:
+    """Answers as the analyst, then raises when invoked as the critic."""
+
+    def __init__(self, *, answers: list[str], error: Exception) -> None:
+        self._analyst = FakeLLM(responses=answers)
+        self._critic = FakeRaisingStructuredLLM(error=error)
+        self.analyst_calls = self._analyst.calls
+        self.critic_calls = self._critic.calls
+
+    def invoke(self, messages):
+        return self._analyst.invoke(messages)
+
+    def with_structured_output(self, schema):
+        return self._critic.with_structured_output(schema)
+
+
+def test_a_raising_critic_ends_the_run_in_a_technical_refusal_not_a_crash():
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = AnalystThenRaisingCriticLLM(
+        answers=["DORA, article 28 impose un registre."],
+        error=RuntimeError("HTTP 429: rate limited"),
+    )
+    graph = build_graph(retriever=retriever, llm=llm)
+
+    final = graph.invoke(initial_state("Que dit l'article 28 de DORA ?"), CONFIG)
+
+    assert final["answer"] is None
+    assert final["critic_error"] is not None
+    reason = final["refusal_reason"].lower()
+    assert "aucune base réglementaire" not in reason
+    assert "insuffisant" not in reason
+
+
+def test_the_graph_runs_identically_without_a_tracing_client():
+    # Non-regression: the default (`client=None`) must behave exactly as
+    # before `build_graph` learned about tracing.
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = ScriptedLLM(
+        answers=["DORA, article 28 impose un registre."],
+        verdicts=[verdict(is_grounded=True)],
+    )
+    graph = build_graph(retriever=retriever, llm=llm)
+
+    final = graph.invoke(initial_state("Que dit l'article 28 de DORA ?"), CONFIG)
+
+    assert final["answer"] == "DORA, article 28 impose un registre."
+
+
+def test_a_traced_run_opens_a_span_for_each_of_the_three_nodes():
+    client = FakeLangfuseClient()
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = ScriptedLLM(
+        answers=["DORA, article 28 impose un registre."],
+        verdicts=[verdict(is_grounded=True)],
+    )
+    graph = build_graph(retriever=retriever, llm=llm, client=client)
+
+    graph.invoke(initial_state("Que dit l'article 28 de DORA ?"), CONFIG)
+
+    as_types = [span.as_type for span in client.spans]
+    assert as_types.count("retriever") == 1
+    assert as_types.count("generation") == 2  # analyst, then critic
 
 
 def test_the_final_state_carries_the_corpus_version():

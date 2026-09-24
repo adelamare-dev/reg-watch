@@ -67,6 +67,21 @@ class Retriever:
         # that also matches the embedder's actual dimension.
         self._collection_name = collection_name or settings.collection_name
 
+    @property
+    def top_k(self) -> int:
+        """The configured default, for callers that report it (e.g. tracing)."""
+        return self._settings.top_k
+
+    @property
+    def embedder(self) -> Embedder:
+        """Exposed so callers can report which embedding back-end is active.
+
+        The fastembed/mistral switch has to be visible wherever it matters —
+        tracing, diagnostics — without those callers reaching into a private
+        attribute or `rag` depending on them in turn.
+        """
+        return self._embedder
+
     def search(
         self,
         question: str,

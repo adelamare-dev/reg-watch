@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 from graph.__main__ import format_result, run_question
 from graph.llm import ProviderInfo
 from graph.schemas import Claim, CriticVerdict
 from graph.state import initial_state
-from tests.fakes import FakeLLM, FakeStructuredLLM
+from tests.fakes import FakeLangfuseClient, FakeLLM, FakeStructuredLLM
 from tests.test_mcp_tools import FakeRetriever, make_hit
 
 PROVIDER = ProviderInfo(name="Test Provider", model="test-model", jurisdiction="EU")
@@ -53,6 +55,74 @@ def test_run_question_returns_the_final_state():
 
     assert final["answer"] == "DORA, article 28 impose un registre."
     assert final["llm_provider"] == "test-model"
+
+
+def test_run_question_works_identically_without_a_tracing_client():
+    # Non-regression: omitting `client` must behave exactly as before.
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = ScriptedLLM(answers=["DORA, article 28 impose un registre."], verdicts=[grounded()])
+
+    final = run_question(
+        "Que dit l'article 28 de DORA ?",
+        retriever=retriever,
+        llm=llm,
+        provider=PROVIDER,
+    )
+
+    assert final["answer"] == "DORA, article 28 impose un registre."
+
+
+def test_run_question_traces_every_node_when_given_a_client():
+    client = FakeLangfuseClient()
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = ScriptedLLM(answers=["DORA, article 28 impose un registre."], verdicts=[grounded()])
+
+    run_question(
+        "Que dit l'article 28 de DORA ?",
+        retriever=retriever,
+        llm=llm,
+        provider=PROVIDER,
+        client=client,
+    )
+
+    as_types = [span.as_type for span in client.spans]
+    assert "retriever" in as_types
+    assert as_types.count("generation") == 2
+
+
+def test_run_question_flushes_the_client_after_a_successful_run():
+    client = FakeLangfuseClient()
+    retriever = FakeRetriever(hits=[make_hit()])
+    llm = ScriptedLLM(answers=["DORA, article 28 impose un registre."], verdicts=[grounded()])
+
+    run_question(
+        "Que dit l'article 28 de DORA ?",
+        retriever=retriever,
+        llm=llm,
+        provider=PROVIDER,
+        client=client,
+    )
+
+    assert client.flushed is True
+
+
+def test_run_question_flushes_the_client_even_when_the_graph_raises():
+    # A crashed run is precisely when the trace is needed most: losing it to
+    # a missing flush would defeat the point of tracing failures at all.
+    client = FakeLangfuseClient()
+    retriever = FakeRetriever(hits=[make_hit()])
+
+    with pytest.raises(ValueError):
+        run_question(
+            "Obligations",
+            retriever=retriever,
+            llm=ScriptedLLM(answers=[], verdicts=[]),
+            provider=PROVIDER,
+            client=client,
+            regulation_filter="MiCA",
+        )
+
+    assert client.flushed is True
 
 
 def test_the_output_names_the_model_and_the_corpus_version():

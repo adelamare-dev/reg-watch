@@ -20,13 +20,19 @@ from graph.nodes.retrieval import retrieval_node, route_after_retrieval
 from graph.state import GraphState
 
 
-def build_graph(*, retriever, llm, checkpointer=None):
-    """Compile the graph. Pass fakes in tests, real clients in `__main__`."""
+def build_graph(*, retriever, llm, checkpointer=None, client=None):
+    """Compile the graph. Pass fakes in tests, real clients in `__main__`.
+
+    `client` is the Langfuse client (or `None`), bound into the three nodes
+    the same way `retriever` and `llm` are: a keyword with a default, so
+    every existing caller keeps working unchanged and tracing stays a
+    decorator rather than a dependency of the graph's shape.
+    """
     builder = StateGraph(GraphState)
 
-    builder.add_node("retrieval", partial(retrieval_node, retriever=retriever))
-    builder.add_node("analyst", partial(analyst_node, llm=llm))
-    builder.add_node("critic", partial(critic_node, llm=llm))
+    builder.add_node("retrieval", partial(retrieval_node, retriever=retriever, client=client))
+    builder.add_node("analyst", partial(analyst_node, llm=llm, client=client))
+    builder.add_node("critic", partial(critic_node, llm=llm, client=client))
     builder.add_node("refusal", refusal_node)
 
     builder.add_edge(START, "retrieval")

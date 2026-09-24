@@ -6,7 +6,7 @@ from graph.nodes.critic import critic_node, route_after_critic
 from graph.schemas import Claim, CriticVerdict, Divergence
 from graph.state import GraphState, initial_state
 from mcp_server.tools import _serialise_hit
-from tests.fakes import FakeStructuredLLM
+from tests.fakes import FakeLangfuseClient, FakeRaisingStructuredLLM, FakeStructuredLLM
 from tests.test_mcp_tools import make_hit
 
 
@@ -152,5 +152,77 @@ def test_the_retry_budget_is_enforced():
     state = state_with_answer()
     state["is_grounded"] = False
     state["iteration"] = 2
+
+    assert route_after_critic(state) == "refusal"
+
+
+def test_a_raising_llm_does_not_escape_the_critic_node():
+    llm = FakeRaisingStructuredLLM(error=RuntimeError("HTTP 429: rate limited"))
+
+    update = critic_node(state_with_answer(), llm=llm)
+
+    assert "429" in update["critic_error"]
+
+
+def test_a_raising_llm_invents_neither_verdict_nor_claims():
+    llm = FakeRaisingStructuredLLM(error=RuntimeError("HTTP 429: rate limited"))
+
+    update = critic_node(state_with_answer(), llm=llm)
+
+    assert "verified_claims" not in update
+    assert "divergences" not in update
+    assert "is_grounded" not in update
+
+
+def test_a_raising_llm_does_not_consume_a_retry_iteration():
+    # A technical failure did not judge the grounding, so it must not spend
+    # one of the two retry passes as if it had.
+    llm = FakeRaisingStructuredLLM(error=RuntimeError("boom"))
+    state = state_with_answer()
+    state["iteration"] = 0
+
+    update = critic_node(state, llm=llm)
+
+    assert "iteration" not in update or update["iteration"] == state["iteration"]
+
+
+def test_the_critic_works_identically_without_a_tracing_client():
+    # Non-regression: omitting `client` must behave exactly as before.
+    llm = FakeStructuredLLM(verdicts=[grounded_verdict()])
+
+    update = critic_node(state_with_answer(), llm=llm)
+
+    assert len(update["verified_claims"]) == 1
+
+
+def test_the_critic_opens_a_generation_span_when_traced():
+    client = FakeLangfuseClient()
+    llm = FakeStructuredLLM(verdicts=[grounded_verdict()])
+
+    critic_node(state_with_answer(), llm=llm, client=client)
+
+    assert len(client.spans) == 1
+    assert client.spans[0].as_type == "generation"
+
+
+def test_a_raising_critic_still_marks_its_span_in_error_and_is_still_caught():
+    # The span must observe the failure (ERROR level) without swallowing it:
+    # the existing try/except still has to produce `critic_error`, not a crash.
+    client = FakeLangfuseClient()
+    llm = FakeRaisingStructuredLLM(error=RuntimeError("HTTP 429: rate limited"))
+
+    update = critic_node(state_with_answer(), llm=llm, client=client)
+
+    assert "429" in update["critic_error"]
+    span = client.spans[0]
+    assert span.updates[-1]["level"] == "ERROR"
+
+
+def test_critic_error_routes_to_refusal_before_anything_else():
+    # Even a state that would otherwise end the run must not: an unverifiable
+    # answer is never published.
+    state = state_with_answer()
+    state["is_grounded"] = True
+    state["critic_error"] = "HTTP 429: rate limited"
 
     assert route_after_critic(state) == "refusal"

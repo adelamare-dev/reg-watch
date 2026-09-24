@@ -9,11 +9,12 @@ process by this graph.
 from __future__ import annotations
 
 from graph.language import detect_language
+from graph.observability import retriever_span
 from graph.state import GraphState
 from mcp_server.tools import canonical_regulation, search_regulatory_corpus
 
 
-def retrieval_node(state: GraphState, *, retriever) -> dict:
+def retrieval_node(state: GraphState, *, retriever, client=None) -> dict:
     """Fill hits, grounding and corpus version from one search.
 
     A regulation outside the corpus raises rather than refuses: an unknown
@@ -25,15 +26,33 @@ def retrieval_node(state: GraphState, *, retriever) -> dict:
     """
     language = detect_language(state["question"])
     regulation = canonical_regulation(state["regulation_filter"])
+    query = state["search_query"] or state["question"]
 
-    result = search_regulatory_corpus(
-        retriever,
-        query=state["search_query"] or state["question"],
-        regulation=regulation,
-        language=language,
-    )
+    # `top_k` and `embedder` are not part of `RetrieverLike`: fakes used across
+    # the test suite do not carry them, and the span must not force that
+    # requirement on them.
+    top_k = getattr(retriever, "top_k", None)
 
-    hits = result["hits"]
+    with retriever_span(client, name="retrieval", query=query, top_k=top_k) as span:
+        result = search_regulatory_corpus(
+            retriever,
+            query=query,
+            regulation=regulation,
+            language=language,
+        )
+        hits = result["hits"]
+
+        update: dict = {"hit_count": len(hits), "exact_filter_used": result["used_exact_filter"]}
+        embedder = getattr(retriever, "embedder", None)
+        if embedder is not None:
+            # Makes the fastembed/mistral switch visible in the trace without
+            # a separate embedding span: the embedding call happens inside
+            # `retriever.search`, one layer below where the client is held.
+            update["metadata"] = {
+                "embedding_model": embedder.model_id,
+                "embedding_dimension": embedder.dimension,
+            }
+        span.update(**update)
 
     return {
         "language": language,

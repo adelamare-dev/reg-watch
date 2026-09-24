@@ -14,6 +14,7 @@ from qdrant_client import QdrantClient
 
 from graph.build import build_graph
 from graph.llm import ProviderInfo, build_llm
+from graph.observability import build_callbacks, flush, init_observability
 from graph.state import GraphState, initial_state
 from rag.config import get_settings
 from rag.embedder import build_embedder
@@ -27,12 +28,25 @@ def run_question(
     llm,
     provider: ProviderInfo,
     regulation_filter: str | None = None,
+    client=None,
 ) -> GraphState:
-    """Run one question through the graph and stamp the provider on it."""
-    graph = build_graph(retriever=retriever, llm=llm)
+    """Run one question through the graph and stamp the provider on it.
+
+    The client is flushed even when the graph raises: a crashed run is
+    exactly when its trace matters most, and losing it to a missing flush
+    would defeat the point of tracing failures at all.
+    """
+    graph = build_graph(retriever=retriever, llm=llm, client=client)
     state = initial_state(question, regulation_filter=regulation_filter)
 
-    final = graph.invoke(state, {"configurable": {"thread_id": "cli"}})
+    try:
+        final = graph.invoke(
+            state,
+            {"configurable": {"thread_id": "cli"}, "callbacks": build_callbacks(client)},
+        )
+    finally:
+        flush(client)
+
     final["llm_provider"] = provider.model
     return final
 
@@ -101,9 +115,10 @@ def main() -> int:
         model=settings.embedding_model,
         api_key=settings.mistral_api_key,
     )
-    client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
-    retriever = Retriever(client=client, embedder=embedder, settings=settings)
+    qdrant_client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
+    retriever = Retriever(client=qdrant_client, embedder=embedder, settings=settings)
     llm, provider = build_llm(settings)
+    tracing_client = init_observability(settings)
 
     final = run_question(
         args.question,
@@ -111,6 +126,7 @@ def main() -> int:
         llm=llm,
         provider=provider,
         regulation_filter=args.regulation,
+        client=tracing_client,
     )
     print(format_result(final, provider))
     return 0
