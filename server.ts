@@ -5,7 +5,7 @@ import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
 const runtime = new CopilotRuntime({
   agents: {
     default: new BuiltInAgent({
-      model: "openai:gpt-5-mini",
+      model: "mistral/mistral-small",
       prompt: "You are a helpful assistant for a React app.",
     }),
   },
@@ -17,7 +17,7 @@ createServer(
   createCopilotNodeListener({
     runtime,
     basePath: "/api/copilotkit",
-    cors: true, 
+    cors: true,
   }),
 ).listen(port, () => {
   console.log(
