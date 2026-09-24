@@ -39,6 +39,9 @@ class GraphState(TypedDict):
     refusal_reason: str | None
     llm_provider: str | None
     corpus_version: str | None
+    # Set once, by the critic node only, and never cleared by a retry: the
+    # one discriminant a routing decision can trust to stay true once true.
+    critic_error: str | None
 
 
 def initial_state(
@@ -65,4 +68,5 @@ def initial_state(
         refusal_reason=None,
         llm_provider=None,
         corpus_version=None,
+        critic_error=None,
     )
