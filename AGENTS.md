@@ -2,16 +2,17 @@
 
 ## Project Overview
 
-RegWatch is a multi-agent regulatory compliance copilot for **DORA × EU AI Act**. Target architecture (per spec) is 5 layers: React UI → Observability → LangGraph orchestration → MCP tools → RAG corpus. **Current state:** layers 1-3 are implemented in Python under `agent/` (249 default tests); the CopilotKit chat scaffold is not yet wired to the graph. The `SETUP/` folder holds planning docs and is **out of scope** for code work — it and `docs/` are gitignored (kept locally, out of the remote).
+RegWatch is a multi-agent regulatory compliance copilot for **DORA × EU AI Act**. Target architecture (per spec) is 5 layers: React UI → Observability → LangGraph orchestration → MCP tools → RAG corpus. **Current state:** layers 1-4 are implemented in Python under `agent/` (355 default tests); the CopilotKit chat scaffold is not yet wired to the graph. The `SETUP/` folder holds planning docs and is **out of scope** for code work — it and `docs/` are gitignored (kept locally, out of the remote).
 
 ## Tech Stack & Key Paths
 
 - **Frontend**: React 19 + TypeScript + Vite 8 — `src/main.tsx` → `src/App.tsx`
-- **Node backend**: `server.ts` (CopilotKit Runtime v2, port `8200`, `/api/copilotkit`), model `openai:gpt-5-mini`. Not yet connected to the Python graph.
-- **Python agent** (`agent/`, one `uv` project, packages `rag`, `mcp_server`, `graph`):
+- **Node backend**: `server.ts` (CopilotKit Runtime v2, port `8200`, `/api/copilotkit`), model `mistral/mistral-small`. Not yet connected to the Python graph.
+- **Python agent** (`agent/`, one `uv` project, packages `rag`, `mcp_server`, `graph`, `eval`):
   - `rag/` — EUR-Lex ingestion, structural chunking, Qdrant retrieval with parent-document return
   - `mcp_server/` — 4 regulatory tools over Streamable HTTP (port `8300`); pure sync functions taking the retriever as an argument, so they are consumed both over the wire and in-process
-  - `graph/` — LangGraph orchestration: Retrieval → Analyst → Critic, bounded retry, two explicit refusals, demo CLI
+  - `graph/` — LangGraph orchestration: Retrieval → Analyst → Critic, bounded retry, three explicit refusals, demo CLI, Langfuse instrumentation (inactive without keys)
+  - `eval/` — golden dataset, its validator, deterministic zero-LLM-call assertions, optional RAGAS pipeline
 - **Package managers**: pnpm (JS, strict policy below) + `uv` (Python 3.12)
 - **Styling**: plain CSS + CSS variables, light/dark via `prefers-color-scheme`, modern CSS nesting
 
@@ -28,7 +29,9 @@ sfw pnpm qdrant           # docker compose up -d qdrant
 sfw pnpm ingest           # ingest the corpus (also :verify, :dry-run)
 sfw pnpm mcp              # MCP server, port 8300 (also mcp:stdio)
 sfw pnpm graph "<question>"          # ask the graph one question
-sfw pnpm test:agent                  # 249 tests
+sfw pnpm eval <dataset.jsonl>         # validate the golden dataset, run deterministic assertions, no LLM call
+sfw pnpm eval:strict <dataset.jsonl>  # same, with ragas raise_exceptions=True (dev only)
+sfw pnpm test:agent                  # 355 tests
 sfw pnpm test:agent:integration      # needs a reachable Qdrant
 ```
 
@@ -62,7 +65,7 @@ The pnpm policy is **intentionally strict** — do not loosen it to unblock inst
 
 If an install fails due to policy, **read `pnpm-workspace.yaml` first** — the answer is usually already documented there.
 
-Python deps are pinned exactly (`langgraph==1.2.11`, `langchain-mistralai==1.1.6`) in `agent/pyproject.toml`, with `agent/uv.lock` committed. Add a dependency by editing `pyproject.toml` and running `uv sync` — never by installing into the environment directly.
+Python deps are pinned exactly (`langgraph==1.2.11`, `langchain-mistralai==1.1.6`) in `agent/pyproject.toml`, with `agent/uv.lock` committed. Add a dependency by editing `pyproject.toml` and running `uv sync` — never by installing into the environment directly. The `eval` extra (`ragas`) is not installed by plain `uv sync`; it needs `uv sync --extra eval`.
 
 ## Working Principles
 
